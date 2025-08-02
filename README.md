@@ -47,6 +47,7 @@ cargo run -- -p <(zcat test/chrX/srf.paf.gz) -m <(zcat test/chrX/monomers.tsv) #
 ```
 
 ## TODO
-* [] Unit and integration tests.
-* [] Support compressed output.
-* [] Better documentation.
+* [ ] Unit and integration tests.
+* [ ] Support compressed output.
+* [ ] Better documentation.
+* [ ] CI and release workflow.
