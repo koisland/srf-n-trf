@@ -42,8 +42,8 @@ chr3_mat_hsa4	76301546	76301589	TATGAAAAGAAAGGTTAAACTCTGTGAGTTGAACGCACACATCACAAA
 
 ## Examples
 ```bash
-cargo run -- -p <(zcat test/chr3/srf.paf.gz) -m <(zcat test/chr3/monomers.tsv) # mGorGor1
-cargo run -- -p <(zcat test/chrX/srf.paf.gz) -m <(zcat test/chrX/monomers.tsv) # mPonAbe1
+cargo run -- -p <(zcat test/chr3/srf.paf.gz) -m <(zcat test/chr3/monomers.tsv.gz) # mGorGor1
+cargo run -- -p <(zcat test/chrX/srf.paf.gz) -m <(zcat test/chrX/monomers.tsv.gz) # mPonAbe1
 ```
 
 ## TODO

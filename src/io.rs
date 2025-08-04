@@ -39,7 +39,6 @@ pub fn read_trf_monomers(infile: impl AsRef<Path>) -> eyre::Result<ChromMonomers
     let mut chrom_monomers: ChromMonomers = HashMap::new();
     for line in reader.lines().map_while(Result::ok) {
         let Some((
-            chrom,
             motif,
             st,
             end,
@@ -50,6 +49,7 @@ pub fn read_trf_monomers(infile: impl AsRef<Path>) -> eyre::Result<ChromMonomers
             _score,
             _entropy,
             pattern,
+            chrom,
         )) = line.split('\t').collect_tuple()
         else {
             continue;
