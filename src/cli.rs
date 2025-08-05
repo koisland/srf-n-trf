@@ -41,14 +41,14 @@ pub enum Command {
         /// `chrom, st, end, comma-delimited_monomers, 0, strand, st, end, '0,0,0'`
         #[arg(short, long)]
         outfile: Option<PathBuf>,
-        /// Distance to merge.
-        #[arg(short, long, default_value_t = 1_000_000)]
+        /// Distance to merge in base pairs.
+        #[arg(short, long, default_value_t = 100_000)]
         dst: u32,
-        /// Minimum length.
+        /// Minimum length in base pairs.
         #[arg(short, long, default_value_t = 30_000)]
         min_len: u32,
         /// Required monomers in merged blocks. Merges iff one of these monomer periods is in block.
-        /// Also filters out monomers not with this period.
+        /// Also filters out monomers not within this period.
         #[arg(short, long, default_values_t = [170, 340], num_args = 1..)]
         sizes: Vec<u32>,
         /// Difference in required monomer size.

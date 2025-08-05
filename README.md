@@ -5,8 +5,7 @@ Script to take `srf` and `trf` output and produce a BED file with only regions c
 1. Run `srf` and `trf` on a T2T genome assembly using https://github.com/logsdon-lab/Snakemake-srf.git. Use these outputs.
 ```
 results/{sample}/{contig}
-├── count.txt
-├── monomers.tsv (*)
+├── trf_monomers.tsv (*)
 ├── srf.bed
 ├── srf.fa
 └── srf.paf (*)
@@ -26,7 +25,7 @@ cargo build --release
 
 ### `extract`
 ```bash
-srf-n-trf extract \
+target/release/srf-n-trf extract \
 -p results/{sample}/{contig}/srf.paf \
 -m results/{sample}/{contig}/monomers.tsv \
 -s 170 340 42 \
@@ -44,15 +43,15 @@ chr3_mat_hsa4	76301546	76301589	TATGAAAAGAAAGGTTAAACTCTGTGAGTTGAACGCACACATCACAAA
 
 ### `merge`
 ```bash
-srf-n-trf merge \
+target/release/srf-n-trf merge \
 -b extract.bed \
--d 1000000 \
+-d 100000 \
 -m 30000 \
 -s 170 340 \
 --diff 0.02
 ```
 This will:
-* Merge the extract bed output by 1 Mbp
+* Merge the extract bed output by 100 kbp.
 * Retain only regions that contain monomers of periodicity within `2%` difference in length of `170` and `340` bp and are at least 30 kbp.
 
 ```
@@ -62,14 +61,14 @@ chr3_mat_hsa4   76301546        86011178        CAAGCGCTTTGGGGCCAATGGTAGAAAAGGAA
 ## Examples
 ### `extract`
 ```bash
-cargo run -- extract -p <(zcat test/chr3/srf.paf.gz) -m <(zcat test/chr3/monomers.tsv.gz) # mGorGor1
-cargo run -- extract -p <(zcat test/chrX/srf.paf.gz) -m <(zcat test/chrX/monomers.tsv.gz) # mPonAbe1
+target/release/srf-n-trf extract -p <(zcat test/chr3/srf.paf.gz) -m <(zcat test/chr3/monomers.tsv.gz) # mGorGor1
+target/release/srf-n-trf extract -p <(zcat test/chrX/srf.paf.gz) -m <(zcat test/chrX/monomers.tsv.gz) # mPonAbe1
 ```
 
-### `merged`
+### `merge`
 ```bash
-cargo run -- merge -b <(zcat test/chr3/monomers.bed.gz) # mGorGor1
-cargo run -- merge -b <(zcat test/chr3/monomers.bed.gz) # mPonAbe1
+target/release/srf-n-trf merge -b <(zcat test/chr3/monomers.bed.gz) # mGorGor1
+target/release/srf-n-trf merge -b <(zcat test/chr3/monomers.bed.gz) # mPonAbe1
 ```
 
 ## TODO
