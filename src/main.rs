@@ -21,6 +21,24 @@ use crate::{
     io::read_trf_monomers,
 };
 
+pub fn create_monomer_range(sizes: &[u32], diff: f32) -> Lapper<u32, ()> {
+    Lapper::new(
+        sizes
+            .iter()
+            .map(|period| {
+                let allowed_diff = *period as f32 * diff;
+                let lower_bound = *period as f32 - allowed_diff;
+                let upper_bound = *period as f32 + allowed_diff;
+                Interval {
+                    start: lower_bound as u32,
+                    stop: upper_bound as u32 + 1,
+                    val: (),
+                }
+            })
+            .collect(),
+    )
+}
+
 fn main() -> eyre::Result<()> {
     let cli = Cli::parse();
     eprintln!("Running command:\n{:#?}", &cli.command);
@@ -35,33 +53,19 @@ fn main() -> eyre::Result<()> {
         } => {
             let monomers = read_trf_monomers(monomers)?;
             let reader = Reader::from_path(paf)?;
+            // Inteval tree of allowed period ranges.
+            let monomer_period_range: Lapper<u32, ()> = create_monomer_range(&sizes, diff);
             let monomer_periods: HashSet<u32> = HashSet::from_iter(sizes);
             let mut writer = if let Some(outfile) = outfile {
                 Box::new(BufWriter::new(File::create(outfile)?)) as Box<dyn Write>
             } else {
-                Box::new(BufWriter::new(stdout())) as Box<dyn Write>
+                Box::new(BufWriter::new(stdout().lock())) as Box<dyn Write>
             };
 
             let Some(min_monomer_period) = monomer_periods.iter().min().cloned() else {
                 bail!("No monomer periods provided.")
             };
 
-            // Inteval tree of allowed period ranges.
-            let monomer_period_range: Lapper<u32, ()> = Lapper::new(
-                monomer_periods
-                    .iter()
-                    .map(|period| {
-                        let allowed_diff = *period as f32 * diff;
-                        let lower_bound = *period as f32 - allowed_diff;
-                        let upper_bound = *period as f32 + allowed_diff;
-                        Interval {
-                            start: lower_bound as u32,
-                            stop: upper_bound as u32 + 1,
-                            val: (),
-                        }
-                    })
-                    .collect(),
-            );
             eprintln!(
                 "Using monomer periodicity range:\n{:#?}",
                 monomer_period_range.intervals
@@ -70,6 +74,7 @@ fn main() -> eyre::Result<()> {
             for rec in reader
                 .into_records()
                 .flatten()
+                // Only primary alignments.
                 .filter(|rec| rec.tp().eq(&Some(&'P')))
                 .sorted_by(|a, b| a.query_start().cmp(&b.query_start()))
             {
@@ -102,7 +107,9 @@ fn main() -> eyre::Result<()> {
                     if monomers.is_empty() {
                         continue;
                     }
-                    writeln!(
+                    // Handle broken-pipe.
+                    // https://stackoverflow.com/a/65760807
+                    if let Err(err) = writeln!(
                         &mut writer,
                         "{}\t{}\t{}\t{}\t0\t{}\t{}\t{}\t0,0,0",
                         rec.query_name(),
@@ -112,7 +119,11 @@ fn main() -> eyre::Result<()> {
                         rec.strand(),
                         q_itv.start,
                         q_itv.stop,
-                    )?;
+                    ) {
+                        if err.kind() != std::io::ErrorKind::BrokenPipe {
+                            let _ = writeln!(std::io::stderr(), "{err:?}");
+                        }
+                    }
                 }
             }
         }
@@ -127,28 +138,14 @@ fn main() -> eyre::Result<()> {
             let reader = if bed != OsStr::new("-") {
                 Box::new(BufReader::new(File::open(bed)?)) as Box<dyn BufRead>
             } else {
-                Box::new(BufReader::new(stdin()))
+                Box::new(BufReader::new(stdin().lock()))
             };
             let mut writer = if let Some(outfile) = outfile {
                 Box::new(BufWriter::new(File::create(outfile)?)) as Box<dyn Write>
             } else {
-                Box::new(BufWriter::new(stdout())) as Box<dyn Write>
+                Box::new(BufWriter::new(stdout().lock())) as Box<dyn Write>
             };
-            let monomer_period_range: Lapper<u32, ()> = Lapper::new(
-                sizes
-                    .iter()
-                    .map(|period| {
-                        let allowed_diff = *period as f32 * diff;
-                        let lower_bound = *period as f32 - allowed_diff;
-                        let upper_bound = *period as f32 + allowed_diff;
-                        Interval {
-                            start: lower_bound as u32,
-                            stop: upper_bound as u32 + 1,
-                            val: (),
-                        }
-                    })
-                    .collect(),
-            );
+            let monomer_period_range: Lapper<u32, ()> = create_monomer_range(&sizes, diff);
             eprintln!(
                 "Using monomer periodicity range:\n{:#?}",
                 monomer_period_range.intervals
@@ -171,6 +168,7 @@ fn main() -> eyre::Result<()> {
                 .sorted_by(|a, b| (&a.0, a.1).cmp(&(&b.0, b.1)))
                 .collect();
 
+            // Merge intervals.
             while let Some(mut itv_1) = intervals.pop_front() {
                 let Some(itv_2) = intervals.pop_front() else {
                     // Remove anything that isn't in required monomer period range.
@@ -182,6 +180,7 @@ fn main() -> eyre::Result<()> {
                     break;
                 };
                 let dst_between = itv_2.1.saturating_sub(itv_1.2);
+                // Must be same name and within distance.
                 if dst_between <= dst && itv_1.0 == itv_2.0 {
                     intervals.push_front((
                         itv_1.0,
@@ -195,6 +194,7 @@ fn main() -> eyre::Result<()> {
                     ));
                 } else {
                     let final_itv_len = itv_1.2 - itv_1.1;
+                    // Filter monomers that don't fall within monomer period range.
                     itv_1.3.retain(|m| {
                         monomer_period_range.count(m.len() as u32, m.len() as u32) != 0
                     });
@@ -207,10 +207,14 @@ fn main() -> eyre::Result<()> {
             }
             for (chrom, st, end, monomers) in final_intervals {
                 let monomers = monomers.iter().join(",");
-                writeln!(
+                if let Err(err) = writeln!(
                     &mut writer,
                     "{chrom}\t{st}\t{end}\t{monomers}\t0\t.\t{st}\t{end}\t0,0,0"
-                )?;
+                ) {
+                    if err.kind() != std::io::ErrorKind::BrokenPipe {
+                        let _ = writeln!(std::io::stderr(), "{err:?}");
+                    }
+                }
             }
         }
     }

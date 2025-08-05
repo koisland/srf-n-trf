@@ -81,6 +81,7 @@ pub fn parse_cigar(cg: &str) -> eyre::Result<Vec<CigarOp>> {
     Ok(cigar_ops)
 }
 
+/// Get intervals from query that align to target that meet some minimum length.
 pub fn get_aligned_paired_itvs(
     rec: &PafRecord,
     min_length: u32,
@@ -90,7 +91,6 @@ pub fn get_aligned_paired_itvs(
     let cg = rec.cg().context("Record has no cigar.")?;
     let cg_ops = parse_cigar(cg)?;
 
-    // Matches only
     let mut paired_itvs = vec![];
     for cg_op in cg_ops {
         let (q_adj, t_adj) = match cg_op {
