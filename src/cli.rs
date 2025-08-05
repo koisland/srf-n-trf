@@ -26,7 +26,7 @@ pub enum Command {
         #[arg(short, long)]
         outfile: Option<PathBuf>,
         /// Monomer size in base pairs to search for.
-        #[arg(short, long, default_values_t = [170, 340, 42])]
+        #[arg(short, long, default_values_t = [170, 340, 42], num_args = 1..)]
         sizes: Vec<u32>,
         /// Percent difference in monomer period allowed.
         /// ex. `0.02` results in valid periods for `170`: `167 < 170 < 173`
@@ -49,7 +49,7 @@ pub enum Command {
         min_len: u32,
         /// Required monomers in merged blocks. Merges iff one of these monomer periods is in block.
         /// Also filters out monomers not with this period.
-        #[arg(short, long, default_values_t = [170, 340])]
+        #[arg(short, long, default_values_t = [170, 340], num_args = 1..)]
         sizes: Vec<u32>,
         /// Difference in required monomer size.
         #[arg(long, default_value_t = 0.02)]
