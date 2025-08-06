@@ -76,17 +76,24 @@ fn main() -> eyre::Result<()> {
                 .flatten()
                 .sorted_by(|a, b| a.query_start().cmp(&b.query_start()))
             {
-                let paired_itvs = get_aligned_paired_itvs(&rec, min_monomer_period)?;
-
-                let Some(target_chrom_monomers) = monomers.get(rec.query_name()) else {
+                // TODO: Branch here. If rec is within x% length. Use identity rather than overlap. To find divergent and monomeric HORs.
+                // alignment_block_len and de tag
+                let Some(target_tr_chrom_monomers) = monomers
+                    .get(rec.query_name())
+                    .and_then(|mp| mp.get(rec.target_name()))
+                else {
                     continue;
                 };
+                // if true && target_tr_chrom_monomers.iter().any(|mon|
+                //     monomer_period_range.count(mon.val.trf_period, mon.val.trf_period) > 0
+                // ) {
+
+                // }
+                // eprintln!("{rec:?}");
+
+                let paired_itvs = get_aligned_paired_itvs(&rec, min_monomer_period)?;
+
                 for (q_itv, t_itv) in paired_itvs {
-                    let Some(target_tr_chrom_monomers) =
-                        target_chrom_monomers.get(rec.target_name())
-                    else {
-                        continue;
-                    };
                     let ovl = target_tr_chrom_monomers
                         .find(t_itv.start, t_itv.stop)
                         .collect_vec();
@@ -107,6 +114,8 @@ fn main() -> eyre::Result<()> {
                         })
                         .join(",");
 
+                    // eprintln!("{q_itv:?}-{q_itv_len}");
+                    // eprintln!("{ovl:?}");
                     if monomers.is_empty() {
                         continue;
                     }
