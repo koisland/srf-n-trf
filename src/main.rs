@@ -96,14 +96,19 @@ fn main() -> eyre::Result<()> {
                     if ovl.is_empty() {
                         continue;
                     }
+                    let q_itv_len = q_itv.stop - q_itv.start;
 
                     let monomers = ovl
                         .iter()
                         .filter_map(|o| {
-                            (monomer_period_range.count(o.val.trf_period, o.val.trf_period) > 0)
-                                .then_some(&o.val.trf_monomer)
+                            let is_period_ovl =
+                                monomer_period_range.count(o.val.trf_period, o.val.trf_period) > 0;
+                            let at_least_period_size = o.val.trf_period <= q_itv_len;
+
+                            (is_period_ovl && at_least_period_size).then_some(&o.val.trf_monomer)
                         })
                         .join(",");
+
                     if monomers.is_empty() {
                         continue;
                     }
