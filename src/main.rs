@@ -74,8 +74,6 @@ fn main() -> eyre::Result<()> {
             for rec in reader
                 .into_records()
                 .flatten()
-                // Only primary alignments.
-                .filter(|rec| rec.tp().eq(&Some(&'P')))
                 .sorted_by(|a, b| a.query_start().cmp(&b.query_start()))
             {
                 let paired_itvs = get_aligned_paired_itvs(&rec, min_monomer_period)?;
