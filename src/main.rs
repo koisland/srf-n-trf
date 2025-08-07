@@ -50,6 +50,7 @@ fn main() -> eyre::Result<()> {
             outfile,
             sizes,
             diff,
+            max_seq_div,
         } => {
             let monomers = read_trf_monomers(monomers)?;
             let reader = Reader::from_path(paf)?;
@@ -76,23 +77,51 @@ fn main() -> eyre::Result<()> {
                 .flatten()
                 .sorted_by(|a, b| a.query_start().cmp(&b.query_start()))
             {
-                // TODO: Branch here. If rec is within x% length. Use identity rather than overlap. To find divergent and monomeric HORs.
-                // alignment_block_len and de tag
                 let Some(target_tr_chrom_monomers) = monomers
                     .get(rec.query_name())
                     .and_then(|mp| mp.get(rec.target_name()))
                 else {
                     continue;
                 };
-                // if true && target_tr_chrom_monomers.iter().any(|mon|
-                //     monomer_period_range.count(mon.val.trf_period, mon.val.trf_period) > 0
-                // ) {
+                let target_len = rec.target_len() as i32;
+                let aln_len = rec.alignment_block_len() as i32;
+                let aln_itv_diff = target_len.abs_diff(aln_len);
+                let aln_rpt_len_perc_diff = aln_itv_diff as f32 / rec.target_len() as f32;
 
-                // }
-                // eprintln!("{rec:?}");
+                // If rec is within x% difference in length. Use gap-comprssed identity rather than overlap to find divergent and monomeric HORs.
+                // Will not return individual monomer positions but entire region.
+                if aln_rpt_len_perc_diff < diff
+                    && rec.de().map(|de| *de < max_seq_div).unwrap_or_default()
+                    && target_tr_chrom_monomers.iter().any(|mon| {
+                        monomer_period_range.count(mon.val.trf_period, mon.val.trf_period) > 0
+                    })
+                {
+                    let monomers = target_tr_chrom_monomers
+                        .iter()
+                        .map(|m| &m.val.trf_monomer)
+                        .join(",");
+                    // Handle broken-pipe.
+                    // https://stackoverflow.com/a/65760807
+                    if let Err(err) = writeln!(
+                        &mut writer,
+                        "{}\t{}\t{}\t{}\t0\t{}\t{}\t{}\t0,0,0",
+                        rec.query_name(),
+                        rec.query_start(),
+                        rec.query_end(),
+                        monomers,
+                        rec.strand(),
+                        rec.query_start(),
+                        rec.query_end(),
+                    ) {
+                        if err.kind() != std::io::ErrorKind::BrokenPipe {
+                            let _ = writeln!(std::io::stderr(), "{err:?}");
+                        }
+                    }
+                    continue;
+                }
 
+                // Otherwise, search cigar string elements for monomers.
                 let paired_itvs = get_aligned_paired_itvs(&rec, min_monomer_period)?;
-
                 for (q_itv, t_itv) in paired_itvs {
                     let ovl = target_tr_chrom_monomers
                         .find(t_itv.start, t_itv.stop)
@@ -114,13 +143,9 @@ fn main() -> eyre::Result<()> {
                         })
                         .join(",");
 
-                    // eprintln!("{q_itv:?}-{q_itv_len}");
-                    // eprintln!("{ovl:?}");
                     if monomers.is_empty() {
                         continue;
                     }
-                    // Handle broken-pipe.
-                    // https://stackoverflow.com/a/65760807
                     if let Err(err) = writeln!(
                         &mut writer,
                         "{}\t{}\t{}\t{}\t0\t{}\t{}\t{}\t0,0,0",

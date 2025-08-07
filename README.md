@@ -61,14 +61,14 @@ chr3_mat_hsa4   76301546        86011178        CAAGCGCTTTGGGGCCAATGGTAGAAAAGGAA
 ## Examples
 ### `extract`
 ```bash
-target/release/srf-n-trf extract -p <(zcat test/chr3/srf.paf.gz) -m <(zcat test/chr3/monomers.tsv.gz) # mGorGor1
-target/release/srf-n-trf extract -p <(zcat test/chrX/srf.paf.gz) -m <(zcat test/chrX/monomers.tsv.gz) # mPonAbe1
+target/release/srf-n-trf extract -p <(zcat test/chr3_mGorGor1/srf.paf.gz) -m <(zcat test/chr3_mGorGor1/monomers.tsv.gz) # mGorGor1
+target/release/srf-n-trf extract -p <(zcat test/chrX_mPonAbe1/srf.paf.gz) -m <(zcat test/chrX_mPonAbe1/monomers.tsv.gz) # mPonAbe1
 ```
 
 ### `merge`
 ```bash
-target/release/srf-n-trf merge -b <(zcat test/chr3/monomers.bed.gz) # mGorGor1
-target/release/srf-n-trf merge -b <(zcat test/chr3/monomers.bed.gz) # mPonAbe1
+target/release/srf-n-trf merge -b <(zcat test/chr3_mGorGor1/monomers.bed.gz) # mGorGor1
+target/release/srf-n-trf merge -b <(zcat test/chrX_mPonAbe1/monomers.bed.gz) # mPonAbe1
 ```
 
 ## TODO

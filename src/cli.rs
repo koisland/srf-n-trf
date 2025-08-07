@@ -28,10 +28,13 @@ pub enum Command {
         /// Monomer size in base pairs to search for.
         #[arg(short, long, default_values_t = [170, 340, 42], num_args = 1..)]
         sizes: Vec<u32>,
-        /// Percent difference in monomer period allowed.
+        /// Percent difference in monomer period length allowed.
         /// ex. `0.02` results in valid periods for `170`: `167 < 170 < 173`
         #[arg(short, long, default_value_t = 0.02)]
         diff: f32,
+        /// Maximum gap-compressed sequence divergence between aligned motif and region.
+        #[arg(short, long, default_value_t = 0.2)]
+        max_seq_div: f64,
     },
     Merge {
         /// Bed file from extract command.
