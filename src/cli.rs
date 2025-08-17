@@ -12,7 +12,7 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    Extract {
+    Monomers {
         #[arg(short, long)]
         /// PAF file of alignment of assembly as query and `srf` enlonged motifs as target.
         /// Requires `cg` extended cigar string. With `minimap2`, use `--eqx`.
@@ -26,7 +26,7 @@ pub enum Command {
         #[arg(short, long)]
         outfile: Option<PathBuf>,
         /// Monomer size in base pairs to search for.
-        #[arg(short, long, default_values_t = [170, 340, 42], num_args = 1..)]
+        #[arg(short, long, default_values_t = [170, 340, 510, 680, 850, 1020, 42], num_args = 1..)]
         sizes: Vec<u32>,
         /// Percent difference in monomer period length allowed.
         /// ex. `0.02` results in valid periods for `170`: `167 < 170 < 173`
@@ -36,7 +36,29 @@ pub enum Command {
         #[arg(short, long, default_value_t = 0.2)]
         max_seq_div: f64,
     },
-    Merge {
+    Motifs {
+        #[arg(short, long)]
+        /// Fasta file of srf detected motifs.
+        fa: PathBuf,
+        /// `trf` monomers TSV file on `srf` monomers with columns:
+        /// `chrom (query), motif (target), st, end, period, copyNum, fracMatch, fracGap, score, entropy, pattern`
+        #[arg(short, long)]
+        monomers: PathBuf,
+        /// Output fasta file filtered to only motifs composed of monomers of given size.
+        #[arg(short, long)]
+        outfile: Option<PathBuf>,
+        /// Monomer size in base pairs to search for.
+        #[arg(short, long, default_values_t = [170, 340, 510, 680, 850, 1020], num_args = 1..)]
+        sizes: Vec<u32>,
+        /// Percent difference in monomer period length allowed.
+        /// ex. `0.02` results in valid periods for `170`: `167 < 170 < 173`
+        #[arg(short, long, default_value_t = 0.02)]
+        diff: f32,
+        /// Require all monomers to be within size range.
+        #[arg(long, default_value_t = true)]
+        require_all: bool,
+    },
+    Regions {
         /// Bed file from extract command.
         #[arg(short, long)]
         bed: PathBuf,
@@ -52,7 +74,7 @@ pub enum Command {
         min_len: u32,
         /// Required monomers in merged blocks. Merges iff one of these monomer periods is in block.
         /// Also filters out monomers not within this period.
-        #[arg(short, long, default_values_t = [170, 340], num_args = 1..)]
+        #[arg(short, long, default_values_t = [170, 340, 510, 680, 850, 1020], num_args = 1..)]
         sizes: Vec<u32>,
         /// Difference in required monomer size.
         #[arg(long, default_value_t = 0.02)]

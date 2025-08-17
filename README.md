@@ -23,9 +23,9 @@ cargo build --release
 
 ## Usage
 
-### `extract`
+### `monomers`
 ```bash
-target/release/srf-n-trf extract \
+target/release/srf-n-trf monomers \
 -p results/{sample}/{contig}/srf.paf \
 -m results/{sample}/{contig}/monomers.tsv \
 -s 170 340 42 \
@@ -41,9 +41,26 @@ chr3_mat_hsa4	76301546	76301589	TATGAAAAGAAAGGTTAAACTCTGTGAGTTGAACGCACACATCACAAA
 ```
 > The example in `test/chr3` is mGorGor1 chr3_mat_hsa4 from the [T2T Primates project](https://github.com/marbl/Primates?tab=readme-ov-file).
 
-### `merge`
+### `motifs`
 ```bash
-target/release/srf-n-trf merge \
+target/release/srf-n-trf motifs \
+-f results/{sample}/{contig}/srf.fa \
+-m results/{sample}/{contig}/monomers.tsv \
+-s 170 340 \
+-d 0.02
+```
+This will:
+* Search for `srf` motifs with monomers with a periodicity of `170` and `340` within a `2%` length difference.
+    * These correspond to α-satellite and HSAT-1A repeats.
+
+```
+>prefix#circ2-1706
+TTGAATGCACTTATCACAAAGCAGTTTCTGAGAATGCTTCCGTCCAGCTTTTGTGCAATGATATTTCCTTTTGCAGCATAGGCCTCAAAATGTTCCAAATATCCACTTGCAGATTCTACAAAAAGAGTGTTTCAAAACTGCTCTATGGAAAGGCAGGTGGATCTCTGTGAGTTGAGTGCACAAAGCACAGGGAACTTTCTGAGAATGCTTTTGTCTAGTTTCTAGGTGAAGATATTTCCTTGTCCAGCATAGGCCTCAAAGCACTCCATCCATCCACTTGAAGATTCTGCTAAAAGAGTGTTTCAAAACTTCTCTATCGAAAGAAAGGTTCAACTCTGTGAGTTGAATGCAGACGTTACAAAGAAGTTTCTGAGAATGCTTCTGTCCAGTTTTTATGTGAAGGTATTTCCTTTTCCAGCATAGGCCTCAAAGCGCTCCATATATCCACTTGCAGATTCTGCAAAAAGAGCGTTTCCAAACTGCTCTCTCAAAAGGAAGGTTCAACTCTGTGAGTTGAATGCGTGCATCGCGAAGAAGTTTCAGAGAATGCTTCTGTCTAGTTTTTAGGTGAAGATATTTCATTTCCCAGCATAGGCCTCAAGGCGCTAGAAATATCCACTTGCAGATTCTACAAAAAGAGTGTTTCATAACTGCGCTTTGAAAAAGAAGGTTCAAGTCTGTGAGTTGAATGCACTGAGCAGAAAGAAGTTTGTGAGAGCGCTTCTATCTAGTTTTCATCTGCATGTAGTTCCTTTTCCACTAGATGCCGCAATCGCACCAAATATCCACATGCAGTTTCCACAAAAAGAGTGTTGCAGAACTGCTCCATGAAAAGGAATGTTCAACTCTGTGAGTTCAATCCCCACATGACATAGCAGTTTCTGAAATGCTTCTGTCTAGTTTGTATATGAAGATATTTCCTTTTCCAGCATAAGCCTCAAAGAGCTCCAAATATCCACTTGCTGAGTCTACAAAAACAGTGTTTCAAAACTGGTCTCTCAAAAGGAAGGTTCAACTCTGTGAGTTGAATGCACTTATCACAAAGCAGTTTCTGAGAATGCTTCCGTCCAGCTTTTATGCAACGATATTTCCTTTGGCAGCATAGGCCTCAAAGCGCTCCAAATATCCCCTTGCAGATTCTACAAAAAGGGTGTTTCCAAACTGCTCTCTCAAAAGGAAGGTTCAACTCTGTGAGTTGAATGCGTGCATCGCGAAGAAGTTTCTTAGAATGCTTCTGTCTAGTTCTTAGGTGAAGATATTTCATTTCCCAGCATAGGCCTCAAGGCGCTCCAAATATCCACTTGCAGATTCTACAAAAAGAGTGTTTCAAAACTGCGCTTTGAAAAGGAAGGTTCAAGTCTGTCAGTTGAATGCACTCAGCAGAAAGAAGTTTCTGAGAGCGCTTCTATCCAGTTTTCATCTGCATGTAGTTCCTTTTCCACTAGATGCCGCAATCGCACCAAATATCCAATTGCAGTTTCTACAAAAAGAGTGTTGCAGAACTGCTCCATGAAAAGGAATGTTCAACTCTGTGAGTTCAATCCCCACATTACATAGCAGTTTCTGAAATGCTTCTGTCTTGTTTGTATATGAAGATATTTCCTTTTACAGCATAAGCCTCAAAGAGCTCCAAATATCCAATTGCTGACTCTACAAAAACTGTGTTTCAAAACTGGTCTCTCAAAAGGAAGGTTCAACTCTGTGAG
+```
+
+### `regions`
+```bash
+target/release/srf-n-trf regions \
 -b extract.bed \
 -d 100000 \
 -m 30000 \
@@ -59,16 +76,21 @@ chr3_mat_hsa4   76301546        86011178        CAAGCGCTTTGGGGCCAATGGTAGAAAAGGAA
 ```
 
 ## Examples
-### `extract`
+### `monomers`
 ```bash
-target/release/srf-n-trf extract -p <(zcat test/chr3_mGorGor1/srf.paf.gz) -m <(zcat test/chr3_mGorGor1/monomers.tsv.gz) # mGorGor1
-target/release/srf-n-trf extract -p <(zcat test/chrX_mPonAbe1/srf.paf.gz) -m <(zcat test/chrX_mPonAbe1/monomers.tsv.gz) # mPonAbe1
+target/release/srf-n-trf monomers -p <(zcat test/chr3_mGorGor1/srf.paf.gz) -m <(zcat test/chr3_mGorGor1/monomers.tsv.gz)
+target/release/srf-n-trf monomers -p <(zcat test/chrX_mPonAbe1/srf.paf.gz) -m <(zcat test/chrX_mPonAbe1/monomers.tsv.gz)
 ```
 
-### `merge`
+### `motifs`
 ```bash
-target/release/srf-n-trf merge -b <(zcat test/chr3_mGorGor1/monomers.bed.gz) # mGorGor1
-target/release/srf-n-trf merge -b <(zcat test/chrX_mPonAbe1/monomers.bed.gz) # mPonAbe1
+target/release/srf-n-trf motifs -f <(zcat test/chrX_mPonAbe1/srf.fa.gz) -m <(zcat test/chrX_mPonAbe1/monomers.tsv.gz)
+```
+
+### `regions`
+```bash
+target/release/srf-n-trf regions -b <(zcat test/chr3_mGorGor1/monomers.bed.gz)
+target/release/srf-n-trf regions -b <(zcat test/chrX_mPonAbe1/monomers.bed.gz)
 ```
 
 ## TODO

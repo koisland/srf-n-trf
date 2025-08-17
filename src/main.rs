@@ -6,7 +6,7 @@ use std::{
 };
 
 use clap::Parser;
-use eyre::bail;
+use eyre::{ContextCompat, bail};
 use itertools::Itertools;
 use paf::Reader;
 use rust_lapper::{Interval, Lapper};
@@ -39,12 +39,24 @@ pub fn create_monomer_range(sizes: &[u32], diff: f32) -> Lapper<u32, ()> {
     )
 }
 
+/// `writeln!()` but handles broken pipes.
+/// * https://stackoverflow.com/a/65760807
+macro_rules! writeln_w_bp {
+    ($dst:expr, $($arg:tt)*) => {
+        if let Err(err) = writeln!($dst, $($arg)*) {
+            if err.kind() != std::io::ErrorKind::BrokenPipe {
+                let _ = writeln!(std::io::stderr(), "{err:?}");
+            }
+        }
+    };
+}
+
 fn main() -> eyre::Result<()> {
     let cli = Cli::parse();
     eprintln!("Running command:\n{:#?}", &cli.command);
 
     match cli.command {
-        Command::Extract {
+        Command::Monomers {
             paf,
             monomers,
             outfile,
@@ -100,9 +112,8 @@ fn main() -> eyre::Result<()> {
                         .iter()
                         .map(|m| &m.val.trf_monomer)
                         .join(",");
-                    // Handle broken-pipe.
-                    // https://stackoverflow.com/a/65760807
-                    if let Err(err) = writeln!(
+
+                    writeln_w_bp!(
                         &mut writer,
                         "{}\t{}\t{}\t{}\t0\t{}\t{}\t{}\t0,0,0",
                         rec.query_name(),
@@ -112,11 +123,7 @@ fn main() -> eyre::Result<()> {
                         rec.strand(),
                         rec.query_start(),
                         rec.query_end(),
-                    ) {
-                        if err.kind() != std::io::ErrorKind::BrokenPipe {
-                            let _ = writeln!(std::io::stderr(), "{err:?}");
-                        }
-                    }
+                    );
                     continue;
                 }
 
@@ -146,7 +153,7 @@ fn main() -> eyre::Result<()> {
                     if monomers.is_empty() {
                         continue;
                     }
-                    if let Err(err) = writeln!(
+                    writeln_w_bp!(
                         &mut writer,
                         "{}\t{}\t{}\t{}\t0\t{}\t{}\t{}\t0,0,0",
                         rec.query_name(),
@@ -156,15 +163,63 @@ fn main() -> eyre::Result<()> {
                         rec.strand(),
                         q_itv.start,
                         q_itv.stop,
-                    ) {
-                        if err.kind() != std::io::ErrorKind::BrokenPipe {
-                            let _ = writeln!(std::io::stderr(), "{err:?}");
-                        }
+                    );
+                }
+            }
+        }
+        Command::Motifs {
+            fa,
+            monomers,
+            outfile,
+            sizes,
+            diff,
+            require_all,
+        } => {
+            let reader = if fa != OsStr::new("-") {
+                Box::new(BufReader::new(File::open(fa)?)) as Box<dyn BufRead>
+            } else {
+                Box::new(BufReader::new(stdin().lock()))
+            };
+            let monomers = read_trf_monomers(monomers)?;
+            let (_, monomers) = monomers.into_iter().next().context("No monomers.")?;
+
+            let mut writer = if let Some(outfile) = outfile {
+                Box::new(BufWriter::new(File::create(outfile)?)) as Box<dyn Write>
+            } else {
+                Box::new(BufWriter::new(stdout().lock())) as Box<dyn Write>
+            };
+            let monomer_period_range: Lapper<u32, ()> = create_monomer_range(&sizes, diff);
+
+            let mut curr_rec: Option<String> = None;
+            for line in reader.lines().map_while(Result::ok) {
+                if line.starts_with('>') {
+                    curr_rec = line.trim().strip_prefix('>').and_then(|name| {
+                        name.split_once(' ')
+                            .map(|(name, _comments)| name.to_owned())
+                    });
+                    continue;
+                }
+                if let Some((rec_name, rec_monomers)) = curr_rec
+                    .as_ref()
+                    .and_then(|rec_name| monomers.get(rec_name).map(|mons| (rec_name, mons)))
+                {
+                    let is_valid_motif = if require_all {
+                        rec_monomers.iter().all(|mon| {
+                            monomer_period_range.count(mon.val.trf_period, mon.val.trf_period) > 0
+                        })
+                    } else {
+                        rec_monomers.iter().any(|mon| {
+                            monomer_period_range.count(mon.val.trf_period, mon.val.trf_period) > 0
+                        })
+                    };
+                    if is_valid_motif {
+                        writeln_w_bp!(&mut writer, ">{rec_name}");
+                        writeln_w_bp!(&mut writer, "{line}");
                     }
                 }
             }
         }
-        Command::Merge {
+        Command::Regions {
             bed,
             outfile,
             dst,
@@ -244,14 +299,10 @@ fn main() -> eyre::Result<()> {
             }
             for (chrom, st, end, monomers) in final_intervals {
                 let monomers = monomers.iter().join(",");
-                if let Err(err) = writeln!(
+                writeln_w_bp!(
                     &mut writer,
                     "{chrom}\t{st}\t{end}\t{monomers}\t0\t.\t{st}\t{end}\t0,0,0"
-                ) {
-                    if err.kind() != std::io::ErrorKind::BrokenPipe {
-                        let _ = writeln!(std::io::stderr(), "{err:?}");
-                    }
-                }
+                );
             }
         }
     }
