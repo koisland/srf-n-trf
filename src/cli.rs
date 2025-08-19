@@ -55,7 +55,7 @@ pub enum Command {
         #[arg(short, long, default_value_t = 0.02)]
         diff: f32,
         /// Require all monomers to be within size range.
-        #[arg(long, default_value_t = true)]
+        #[arg(long, action)]
         require_all: bool,
     },
     Regions {
