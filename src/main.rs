@@ -83,18 +83,17 @@ fn main() -> eyre::Result<()> {
                 "Using monomer periodicity range:\n{:#?}",
                 monomer_period_range.intervals
             );
+            let null_lapper = Lapper::new(vec![]);
 
             for rec in reader
                 .into_records()
                 .flatten()
                 .sorted_by(|a, b| a.query_start().cmp(&b.query_start()))
             {
-                let Some(target_tr_chrom_monomers) = monomers
+                let target_tr_chrom_monomers = monomers
                     .get(rec.query_name())
                     .and_then(|mp| mp.get(rec.target_name()))
-                else {
-                    continue;
-                };
+                    .unwrap_or(&null_lapper);
                 let target_len = rec.target_len() as i32;
                 let aln_len = rec.alignment_block_len() as i32;
                 let aln_itv_diff = target_len.abs_diff(aln_len);
@@ -104,15 +103,24 @@ fn main() -> eyre::Result<()> {
                 // Will not return individual monomer positions but entire region.
                 if aln_rpt_len_perc_diff < diff
                     && rec.de().map(|de| *de < max_seq_div).unwrap_or_default()
-                    && target_tr_chrom_monomers.iter().any(|mon| {
-                        monomer_period_range.count(mon.val.trf_period, mon.val.trf_period) > 0
-                    })
                 {
-                    let monomers = target_tr_chrom_monomers
+                    let mut monomers = target_tr_chrom_monomers
                         .iter()
-                        .map(|m| &m.val.trf_monomer)
+                        .filter_map(|m| {
+                            (monomer_period_range.count(m.val.trf_period, m.val.trf_period) > 0)
+                                .then_some(&m.val.trf_monomer)
+                        })
                         .join(",");
 
+                    // Allow if motif found is within range even if doesn't haven any monomers.
+                    if monomer_period_range
+                        .count(rec.alignment_block_len(), rec.alignment_block_len())
+                        > 0
+                    {
+                        monomers.push('.');
+                    } else if monomers.is_empty() {
+                        continue;
+                    }
                     writeln_w_bp!(
                         &mut writer,
                         "{}\t{}\t{}\t{}\t0\t{}\t{}\t{}\t0,0,0",
