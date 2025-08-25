@@ -6,7 +6,7 @@ use std::{
 };
 
 use clap::Parser;
-use eyre::{ContextCompat, bail};
+use eyre::bail;
 use itertools::Itertools;
 use paf::Reader;
 use rust_lapper::{Interval, Lapper};
@@ -90,10 +90,8 @@ fn main() -> eyre::Result<()> {
                 .flatten()
                 .sorted_by(|a, b| a.query_start().cmp(&b.query_start()))
             {
-                let target_tr_chrom_monomers = monomers
-                    .get(rec.query_name())
-                    .and_then(|mp| mp.get(rec.target_name()))
-                    .unwrap_or(&null_lapper);
+                let target_tr_chrom_monomers =
+                    monomers.get(rec.target_name()).unwrap_or(&null_lapper);
                 let target_len = rec.target_len() as i32;
                 let aln_len = rec.alignment_block_len() as i32;
                 let aln_itv_diff = target_len.abs_diff(aln_len);
@@ -116,6 +114,7 @@ fn main() -> eyre::Result<()> {
                     if monomer_period_range
                         .count(rec.alignment_block_len(), rec.alignment_block_len())
                         > 0
+                        && monomers.is_empty()
                     {
                         monomers.push('.');
                     } else if monomers.is_empty() {
@@ -189,7 +188,6 @@ fn main() -> eyre::Result<()> {
                 Box::new(BufReader::new(stdin().lock()))
             };
             let monomers = read_trf_monomers(monomers)?;
-            let (_, monomers) = monomers.into_iter().next().context("No monomers.")?;
 
             let mut writer = if let Some(outfile) = outfile {
                 Box::new(BufWriter::new(File::create(outfile)?)) as Box<dyn Write>
@@ -306,7 +304,10 @@ fn main() -> eyre::Result<()> {
                 }
             }
             for (chrom, st, end, monomers) in final_intervals {
-                let monomers = monomers.iter().join(",");
+                let mut monomers = monomers.iter().join(",");
+                if monomers.is_empty() {
+                    monomers.push('.');
+                }
                 writeln_w_bp!(
                     &mut writer,
                     "{chrom}\t{st}\t{end}\t{monomers}\t0\t.\t{st}\t{end}\t0,0,0"

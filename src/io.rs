@@ -17,7 +17,7 @@ pub struct Monomer {
     pub trf_copy_num: OrderedFloat<f32>,
 }
 
-type ChromMonomers = HashMap<String, HashMap<String, Lapper<u32, Monomer>>>;
+type MotifMonomers = HashMap<String, Lapper<u32, Monomer>>;
 
 /*
 INPUT_TRF_COLS = (
@@ -34,9 +34,9 @@ INPUT_TRF_COLS = (
     "pattern",
 )
 */
-pub fn read_trf_monomers(infile: impl AsRef<Path>) -> eyre::Result<ChromMonomers> {
+pub fn read_trf_monomers(infile: impl AsRef<Path>) -> eyre::Result<MotifMonomers> {
     let reader = BufReader::new(File::open(infile)?);
-    let mut chrom_monomers: ChromMonomers = HashMap::new();
+    let mut motif_monomers: MotifMonomers = HashMap::new();
     for line in reader.lines().map_while(Result::ok) {
         let Some((
             motif,
@@ -49,13 +49,11 @@ pub fn read_trf_monomers(infile: impl AsRef<Path>) -> eyre::Result<ChromMonomers
             _score,
             _entropy,
             pattern,
-            chrom,
         )) = line.split('\t').collect_tuple()
         else {
             continue;
         };
 
-        let qname = chrom.to_owned();
         let tname = motif.to_owned();
         let monomer = Monomer {
             srf_repeat: tname.clone(),
@@ -68,15 +66,10 @@ pub fn read_trf_monomers(infile: impl AsRef<Path>) -> eyre::Result<ChromMonomers
             stop: end.parse()?,
             val: monomer,
         };
-        chrom_monomers
-            .entry(qname.clone())
-            .and_modify(|itrees| {
-                itrees
-                    .entry(tname.clone())
-                    .and_modify(|itree| itree.insert(itv.clone()))
-                    .or_insert_with(|| Lapper::new(vec![itv.clone()]));
-            })
-            .or_insert_with(|| HashMap::from_iter([(tname.clone(), Lapper::new(vec![itv]))]));
+        motif_monomers
+            .entry(tname.clone())
+            .and_modify(|itree| itree.insert(itv.clone()))
+            .or_insert_with(|| Lapper::new(vec![itv.clone()]));
     }
-    Ok(chrom_monomers)
+    Ok(motif_monomers)
 }
